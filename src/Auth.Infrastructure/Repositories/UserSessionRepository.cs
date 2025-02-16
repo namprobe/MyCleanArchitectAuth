@@ -2,6 +2,7 @@
 using Auth.Application.Common.Interfaces;
 using Auth.Domain.Entities;
 using Auth.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace Auth.Infrastructure.Repositories;
 
@@ -12,24 +13,24 @@ public class UserSessionRepository : GenericRepository<UserSession>, IUserSessio
         
     }
 
-    public Task<IEnumerable<UserSession>> GetActiveSessionsAsync(string userId)
+    public async Task<IEnumerable<UserSession>> GetActiveSessionsAsync(string userId)
     {
-        throw new NotImplementedException();
+        return await FindByCondition(x => x.UserId == userId && x.IsRevoked == false && x.ExpiresAt > DateTime.UtcNow).ToListAsync();
     }
 
-    public Task<int> GetActiveSessionsCountAsync(string userId)
+    public async Task<int> GetActiveSessionsCountAsync(string userId)
     {
-        throw new NotImplementedException();
+        return await CountAsync(x => x.UserId == userId && x.IsRevoked == false && x.ExpiresAt > DateTime.UtcNow);
     }
 
-    public Task<UserSession?> GetByDeviceIdAsync(string userId, string deviceId)
+    public async Task<UserSession?> GetByDeviceIdAsync(string userId, string deviceId)
     {
-        throw new NotImplementedException();
+        return await GetFirstOrDefaultAsync(x => x.UserId == userId && x.DeviceId == deviceId);
     }
 
-    public Task<UserSession?> GetByRefreshTokenAsync(string refreshToken)
+    public async Task<UserSession?> GetByRefreshTokenAsync(string refreshToken)
     {
-        throw new NotImplementedException();
+        return await GetFirstOrDefaultAsync(x => x.RefreshToken == refreshToken);
     }
 }
 

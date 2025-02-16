@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Auth.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250216085050_InitialCreate")]
+    [Migration("20250216163218_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -367,7 +367,7 @@ namespace Auth.Infrastructure.Migrations
             modelBuilder.Entity("Auth.Domain.Entities.UserSession", b =>
                 {
                     b.HasOne("Auth.Domain.Entities.ApplicationUser", "User")
-                        .WithMany("Sessions")
+                        .WithMany("UserSessions")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -413,9 +413,9 @@ namespace Auth.Infrastructure.Migrations
 
             modelBuilder.Entity("Auth.Domain.Entities.ApplicationUser", b =>
                 {
-                    b.Navigation("Sessions");
-
                     b.Navigation("UserRoles");
+
+                    b.Navigation("UserSessions");
                 });
 
             modelBuilder.Entity("Auth.Domain.Entities.Role", b =>

@@ -3,6 +3,7 @@ using System.Linq.Expressions;
 using Auth.Application.Common.Interfaces;
 using Auth.Domain.Entities;
 using Auth.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace Auth.Infrastructure.Repositories;
 
@@ -12,19 +13,19 @@ public class RoleRepository : GenericRepository<Role>, IRoleRepository
     {
     }
 
-    public Task<Role?> GetByIdAsync(string id, params Expression<Func<Role, object>>[] includes)
+    // public Task<Role?> GetByIdAsync(string id, params Expression<Func<Role, object>>[] includes)
+    // {
+    //     throw new NotImplementedException();
+    // }
+
+    public async Task<Role?> GetRoleByNameAsync(string name)
     {
-        throw new NotImplementedException();
+        return await GetFirstOrDefaultAsync(x => x.Name == name);
     }
 
-    public Task<Role?> GetRoleByNameAsync(string name)
+    public async Task<IEnumerable<Role>> GetUserRolesAsync(string userId)
     {
-        throw new NotImplementedException();
-    }
-
-    public Task<IEnumerable<Role>> GetUserRolesAsync(string userId)
-    {
-        throw new NotImplementedException();
+        return await _context.UserRoles.Where(x => x.UserId == userId).Select(x => x.Role).ToListAsync();
     }
 }
 

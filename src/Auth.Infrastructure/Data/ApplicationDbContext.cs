@@ -18,7 +18,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Role, str
     }
 
     public DbSet<ApplicationUser> Users { get; set; }
-    public DbSet<Role> Tokens { get; set; }
+    public DbSet<Role> Roles { get; set; }
     public DbSet<UserRole> UserRoles { get; set; }
     public DbSet<UserSession> UserSessions { get; set; }
 
@@ -30,6 +30,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Role, str
         {
             entity.ToTable("Users");
             entity.HasIndex(e => e.Email).IsUnique();
+
+            entity.HasMany(u => u.UserSessions)
+                  .WithOne(s => s.User)
+                  .HasForeignKey(s => s.UserId)
+                  .IsRequired();
         });
 
         builder.Entity<Role>(entity =>
@@ -57,7 +62,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Role, str
             entity.ToTable("UserSessions");
             
             entity.HasOne(us => us.User)
-                .WithMany(u => u.Sessions)
+                .WithMany(u => u.UserSessions)
                 .HasForeignKey(us => us.UserId)
                 .IsRequired();
 

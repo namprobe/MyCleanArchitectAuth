@@ -8,6 +8,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Auth.Domain.Entities;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Auth.Infrastructure.Configurations;
+using Microsoft.Extensions.Options;
 
 namespace Auth.Infrastructure;
 
@@ -50,6 +52,18 @@ public static class DependencyInjection
         
         // Register Unit of Work
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // Register JWT Settings
+        services.Configure<JwtSettings>(options =>
+        {
+            options.Secret = configuration["JwtSettings:Secret"];
+            options.Issuer = configuration["JwtSettings:Issuer"];
+            options.Audience = configuration["JwtSettings:Audience"];
+            options.ExpiresInMinutes = Convert.ToInt32(configuration["JwtSettings:ExpiresInMinutes"]);
+            options.RefreshTokenExpiresInDays = Convert.ToInt32(configuration["JwtSettings:RefreshTokenExpiresInDays"]);
+        });
+        
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<JwtSettings>>().Value);
 
         // Register Services
         services.AddScoped<IEmailTemplateService, EmailTemplateService>();

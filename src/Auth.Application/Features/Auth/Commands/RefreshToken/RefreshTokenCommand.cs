@@ -22,42 +22,42 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
     {
         return await _unitOfWork.ExecuteTransactionAsync(async () =>
         {
-            //lấy session từ refresh token
+            // Lấy session từ refresh token
             var session = await _unitOfWork.UserSessions.GetByRefreshTokenAsync(request.RefreshToken);
             if (session == null || session.IsRevoked || session.ExpiresAt <= DateTime.UtcNow)
             {
                 return Result<TokenResponseDto>.Failure(new[] { "Refresh token is invalid or expired" });
             }
 
-            //verify device id
+            // Verify device id
             if (session.DeviceId != request.DeviceId)
             {
                 return Result<TokenResponseDto>.Failure(new[] { "Invalid device id" });
             }
 
-            //lấy thông tin user
-            var user = await _unitOfWork.Users.GetByIdAsync(session.UserId);
+            // Lấy thông tin user - Sử dụng GetUserByIdAsync
+            var user = await _unitOfWork.Users.GetUserByIdAsync(session.UserId);
             if (user == null || !user.CanLogin)
             {
                 return Result<TokenResponseDto>.Failure(new[] { "User is not allowed to login" });
-            } 
+            }
 
-            // Chỉ tạo access token mới
-            var (accessToken, accessTokenExpiresAt) = await _tokenService.GenerateAccessTokenAsync(user);
+            // Chỉ tạo access token mới - Khai báo kiểu rõ ràng
+            (string accessToken, DateTime accessTokenExpiresAt) = await _tokenService.GenerateAccessTokenAsync(user);
 
             var tokenResponse = new TokenResponseDto
             {
                 AccessToken = accessToken,
-                RefreshToken = session.RefreshToken, // Giữ nguyên refresh token
+                RefreshToken = session.RefreshToken,
                 AccessTokenExpiresAt = accessTokenExpiresAt,
-                RefreshTokenExpiresAt = session.ExpiresAt // Giữ nguyên thời hạn
+                RefreshTokenExpiresAt = session.ExpiresAt
             };
 
-            // Chỉ cập nhật last activity
+            // Cập nhật last activity
             session.LastActivity = DateTime.UtcNow;
             await _unitOfWork.UserSessions.UpdateAsync(session);
 
-            //cập nhật user activity
+            // Cập nhật user activity
             user.LastLoginAt = DateTime.UtcNow;
             await _unitOfWork.Users.UpdateAsync(user);
             await _unitOfWork.SaveChangesAsync(cancellationToken);

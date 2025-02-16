@@ -35,7 +35,7 @@ namespace Auth.Domain.Entities
         
         // Session Management
         public int MaxAllowedSessions { get; set; } = 5;  // Maximum concurrent sessions
-        public virtual ICollection<UserSession> Sessions { get; set; }
+        public virtual ICollection<UserSession> UserSessions { get; set; }
         
         // Navigation Properties
         public virtual ICollection<UserRole> UserRoles { get; set; }
@@ -49,12 +49,12 @@ namespace Auth.Domain.Entities
         
         // Helper Methods
         public bool HasActiveSession(string deviceId)
-            => Sessions?.Any(s => s.DeviceId == deviceId && 
+            => UserSessions?.Any(s => s.DeviceId == deviceId && 
                                 !s.IsRevoked && 
                                 s.ExpiresAt > DateTime.UtcNow) ?? false;
                             
         public bool HasReachedMaxSessions()
-            => Sessions?.Count(s => !s.IsRevoked && 
+            => UserSessions?.Count(s => !s.IsRevoked && 
                                    s.ExpiresAt > DateTime.UtcNow) >= MaxAllowedSessions;
     }
 }

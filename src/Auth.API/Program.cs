@@ -25,6 +25,8 @@ namespace Auth.API
                 Environment.GetEnvironmentVariable("JWT_AUDIENCE");
             builder.Configuration["JwtSettings:ExpiresInMinutes"] = 
                 Environment.GetEnvironmentVariable("JWT_EXPIRES_IN_MINUTES");
+            builder.Configuration["JwtSettings:RefreshTokenExpiresInDays"] = 
+                Environment.GetEnvironmentVariable("REFRESH_TOKEN_EXPIRES_IN_DAYS");
 
             // Add services to the container.
             builder.Services.AddApplication();

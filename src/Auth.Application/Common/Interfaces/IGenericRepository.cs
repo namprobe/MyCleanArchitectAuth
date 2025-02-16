@@ -13,5 +13,6 @@ namespace Auth.Application.Common.Interfaces
         Task<TEntity> UpdateAsync(TEntity entity);
         Task DeleteAsync(TEntity entity);
         IQueryable<TEntity> FindByCondition(Expression<Func<TEntity, bool>> expression);
+        Task<int> CountAsync(Expression<Func<TEntity, bool>> predicate);
     }
 }

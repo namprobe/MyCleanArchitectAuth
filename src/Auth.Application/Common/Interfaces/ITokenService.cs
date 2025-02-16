@@ -6,7 +6,7 @@ namespace Auth.Application.Common.Interfaces;
 public interface ITokenService
 {
     // Tạo cả cặp token (dùng cho login)
-    Task<TokenResponseDto> GenerateTokensAsync(ApplicationUser user);
+    // Task<TokenResponseDto> GenerateTokensAsync(ApplicationUser user);
     
     // Tách riêng vResult<TokenResponseDto>.Failureiệc tạo từng loại token
     Task<(string token, DateTime expiresAt)> GenerateAccessTokenAsync(ApplicationUser user);
