@@ -1,5 +1,6 @@
 using Auth.Application;
 using Auth.Infrastructure;
+using DotNetEnv;
 
 namespace Auth.API
 {
@@ -8,6 +9,22 @@ namespace Auth.API
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            // Load .env file
+            Env.Load();
+            
+            // Override settings from environment variables
+            builder.Configuration["ConnectionStrings:DefaultConnection"] = 
+                Environment.GetEnvironmentVariable("CONNECTION_STRING");
+                
+            builder.Configuration["JwtSettings:Secret"] = 
+                Environment.GetEnvironmentVariable("JWT_SECRET");
+            builder.Configuration["JwtSettings:Issuer"] = 
+                Environment.GetEnvironmentVariable("JWT_ISSUER");
+            builder.Configuration["JwtSettings:Audience"] = 
+                Environment.GetEnvironmentVariable("JWT_AUDIENCE");
+            builder.Configuration["JwtSettings:ExpiresInMinutes"] = 
+                Environment.GetEnvironmentVariable("JWT_EXPIRES_IN_MINUTES");
 
             // Add services to the container.
             builder.Services.AddApplication();
