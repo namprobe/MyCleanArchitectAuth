@@ -11,6 +11,7 @@ public static class EnvironmentConfiguration
         builder.Configuration["ConnectionStrings:DefaultConnection"] = 
             Environment.GetEnvironmentVariable("CONNECTION_STRING");
                 
+        // JWT Settings    
         builder.Configuration["JwtSettings:Secret"] = 
             Environment.GetEnvironmentVariable("JWT_SECRET");
         builder.Configuration["JwtSettings:Issuer"] = 
@@ -22,7 +23,7 @@ public static class EnvironmentConfiguration
         builder.Configuration["JwtSettings:RefreshTokenExpiresInDays"] = 
             Environment.GetEnvironmentVariable("REFRESH_TOKEN_EXPIRES_IN_DAYS");
 
-        // Add Gmail OAuth2 settings
+        // Gmail OAuth2 settings
         builder.Configuration["Gmail:UserEmail"] = 
             Environment.GetEnvironmentVariable("GMAIL_USER_EMAIL");
         builder.Configuration["Gmail:ClientId"] = 
@@ -31,12 +32,18 @@ public static class EnvironmentConfiguration
             Environment.GetEnvironmentVariable("GMAIL_CLIENT_SECRET");
         builder.Configuration["Gmail:RefreshToken"] = 
             Environment.GetEnvironmentVariable("GMAIL_REFRESH_TOKEN");
-        builder.Configuration["Gmail:AccessToken"] = 
-            Environment.GetEnvironmentVariable("GMAIL_ACCESS_TOKEN");
         builder.Configuration["Gmail:RedirectUri"] = 
             Environment.GetEnvironmentVariable("REDIRECT_URI");
 
-        // Add Frontend URL
+        // SMTP Settings
+        builder.Configuration["Smtp:Host"] = 
+            Environment.GetEnvironmentVariable("SMTP_HOST");
+        builder.Configuration["Smtp:Port"] = 
+            Environment.GetEnvironmentVariable("SMTP_PORT");
+        builder.Configuration["SystemName"] = 
+            Environment.GetEnvironmentVariable("SYSTEM_NAME");
+
+        // Frontend URL
         builder.Configuration["FrontendUrl"] = 
             Environment.GetEnvironmentVariable("FRONTEND_URL");
 

@@ -145,28 +145,46 @@ public class EmailService : IEmailService
         
         try
         {
-            // Kết nối tới Gmail SMTP server
-            await client.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
+            var smtpHost = _configuration["Smtp:Host"] ?? 
+                throw new InvalidOperationException("SMTP Host not configured");
+            var smtpPortStr = _configuration["Smtp:Port"] ?? 
+                throw new InvalidOperationException("SMTP Port not configured");
+            var systemName = _configuration["SystemName"] ?? 
+                throw new InvalidOperationException("System Name not configured");
+
+            if (!int.TryParse(smtpPortStr, out int smtpPort))
+            {
+                throw new InvalidOperationException($"Invalid SMTP Port: {smtpPortStr}");
+            }
+
+            _logger.LogInformation("Connecting to SMTP server {Host}:{Port}", smtpHost, smtpPort);
+
+            // Kết nối tới SMTP server
+            await client.ConnectAsync(smtpHost, smtpPort, SecureSocketOptions.StartTls);
 
             // Lấy access token mới
             var accessToken = await GetAccessTokenAsync();
 
+            var userEmail = _configuration["Gmail:UserEmail"] ?? 
+                throw new InvalidOperationException("Gmail User Email not configured");
+
             // Xác thực với OAuth2
-            var oauth2 = new SaslMechanismOAuth2(
-                _configuration["Gmail:UserEmail"],
-                accessToken
-            );
+            var oauth2 = new SaslMechanismOAuth2(userEmail, accessToken);
             await client.AuthenticateAsync(oauth2);
 
             // Tạo email message
             var message = new MimeMessage();
-            message.From.Add(new MailboxAddress("MyCleanArchitectAuth", _configuration["Gmail:UserEmail"]));
+            message.From.Add(new MailboxAddress(systemName, userEmail));
             message.To.Add(new MailboxAddress("", to));
             message.Subject = subject;
             message.Body = new TextPart("html") { Text = body };
 
+            _logger.LogInformation("Sending email to {To}", to);
+
             // Gửi email
             await client.SendAsync(message);
+            
+            _logger.LogInformation("Email sent successfully to {To}", to);
         }
         catch (Exception ex)
         {

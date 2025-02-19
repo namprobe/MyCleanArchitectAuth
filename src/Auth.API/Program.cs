@@ -18,6 +18,7 @@ public class Program
         builder.Services.AddApplication();
         builder.Services.AddInfrastructure(builder.Configuration);
         builder.Services.AddCorsConfiguration(builder.Configuration);
+        builder.Services.AddJwtConfiguration(builder.Configuration);
         builder.Services.AddSwaggerConfiguration();
 
         var app = builder.Build();

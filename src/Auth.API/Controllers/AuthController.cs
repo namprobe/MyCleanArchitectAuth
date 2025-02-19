@@ -170,26 +170,53 @@ namespace Auth.API.Controllers
         {
             try
             {
-                // Lấy userId từ token hiện tại
+                _logger.LogInformation("=== Starting revoke token process ===");
+                
+                // Log all headers
+                foreach (var header in Request.Headers)
+                {
+                    _logger.LogInformation("Header {Key}: {Value}", header.Key, header.Value);
+                }
+                
+                // Log authorization header specifically
+                var authHeader = Request.Headers["Authorization"].FirstOrDefault();
+                _logger.LogInformation("Authorization header: {Auth}", authHeader);
+                
+                // Log user identity information
+                _logger.LogInformation("IsAuthenticated: {IsAuthenticated}", User.Identity?.IsAuthenticated);
+                _logger.LogInformation("AuthenticationType: {AuthType}", User.Identity?.AuthenticationType);
+                
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                _logger.LogInformation("User ID from claims: {UserId}", userId);
+                
+                // Log all claims
+                foreach (var claim in User.Claims)
+                {
+                    _logger.LogInformation("Claim {Type}: {Value}", claim.Type, claim.Value);
+                }
+
                 if (string.IsNullOrEmpty(userId))
                 {
+                    _logger.LogWarning("Invalid token - no user ID found");
                     return Unauthorized(new { Errors = "Invalid token" });
                 }
 
                 var command = new RevokeTokenCommand(
-                    revokeTokenDto.RefreshToken, 
+                    revokeTokenDto.RefreshToken,
                     revokeTokenDto.DeviceId,
-                    userId  // Truyền userId vào command
+                    userId
                 );
-                
+
+                _logger.LogInformation("Sending command: {@Command}", command);
                 var result = await _mediator.Send(command);
 
                 if (!result.IsSuccess)
                 {
+                    _logger.LogWarning("Failed to revoke token: {@Errors}", result.Errors);
                     return BadRequest(new { Errors = result.Errors });
                 }
 
+                _logger.LogInformation("Token revoked successfully");
                 return Ok(new { Message = "Token revoked successfully" });
             }
             catch (Exception ex)
