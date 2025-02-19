@@ -68,17 +68,17 @@ public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEnt
         return await _dbSet.AsNoTracking().ToListAsync();
     }
 
-    public virtual async Task<TEntity> GetByIdAsync(Guid id, params Expression<Func<TEntity, object>>[] includes)
+    public virtual async Task<TEntity> GetByIdAsync(string id, params Expression<Func<TEntity, object>>[] includes)
     {
         // If no includes, use simple query
         if (includes == null || !includes.Any())
         {
-            return await _dbSet.FirstOrDefaultAsync(e => EF.Property<Guid>(e, "Id") == id);
+            return await _dbSet.FindAsync(id);
         }
 
         // If has includes, use GetFirstOrDefaultAsync
         return await GetFirstOrDefaultAsync(
-            e => EF.Property<Guid>(e, "Id") == id,
+            e => EF.Property<string>(e, "Id") == id,
             includes);
     }
 

@@ -26,12 +26,23 @@ public class TokenService : ITokenService
     {
         var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiresInMinutes);
         
-        var claims = new[]
+        var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Role, string.Join(",", user.UserRoles.Select(x => x.Role.Name)))
+            new Claim(ClaimTypes.Email, user.Email)
         };
+
+        // Thêm roles nếu có
+        if (user.UserRoles != null && user.UserRoles.Any())
+        {
+            var roles = user.UserRoles.Select(ur => ur.Role?.Name).Where(r => r != null);
+            claims.Add(new Claim(ClaimTypes.Role, string.Join(",", roles)));
+        }
+        else
+        {
+            // Thêm default role nếu không có role nào
+            claims.Add(new Claim(ClaimTypes.Role, "User"));
+        }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

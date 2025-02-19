@@ -13,38 +13,22 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<st
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IIdentityService _identityService;
-    private readonly IEmailService _emailService;
     private readonly ILoggerService _logger;
 
     public RegisterCommandHandler(
         IUnitOfWork unitOfWork,
         IIdentityService identityService,
-        IEmailService emailService,
         ILoggerService logger)
     {
         _unitOfWork = unitOfWork;
         _identityService = identityService;
-        _emailService = emailService;
         _logger = logger;
     }
 
     public async Task<Result<string>> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
-        //validate trước khi bắt đầu transaction
-        if (request.RegisterDto.Password != request.RegisterDto.ConfirmPassword)
+        try 
         {
-            return Result<string>.Failure(new[] { "Passwords do not match" });
-        }
-
-        //wrap toàn bộ business logic trong transaction
-        return await _unitOfWork.ExecuteTransactionAsync(async () =>
-        {
-            //kiểm tra email đã tồn tại chưa
-            if (!await _unitOfWork.Users.IsEmailUniqueAsync(request.RegisterDto.Email))
-            {
-                return Result<string>.Failure(new[] { "Email already exists" });
-            }
-
             //tạo user mới
             var user = new ApplicationUser
             {
@@ -61,6 +45,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<st
             var (createResult, userId) = await _identityService.CreateUserAsync(user, request.RegisterDto.Password);
             if (!createResult.Succeeded)
             {
+                _logger.LogWarning("Failed to create user: {Errors}", string.Join(", ", createResult.Errors));
                 return Result<string>.Failure(createResult.Errors);
             }
 
@@ -68,6 +53,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<st
             var roleResult = await _identityService.AddToRoleAsync(userId, Roles.User);
             if (!roleResult.Succeeded)
             {
+                _logger.LogWarning("Failed to add role: {Errors}", string.Join(", ", roleResult.Errors));
                 return Result<string>.Failure(roleResult.Errors);
             }
 
@@ -75,21 +61,16 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<st
             var token = await _identityService.GenerateEmailConfirmationTokenAsync(user);
             user.VerificationToken = token;
 
-            // lưu token và database
+            // lưu token vào database
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("User {Email} registered successfully", user.Email);
 
-            //Gửi email xác thực
-            try
-            {
-                await _emailService.SendVerificationEmailAsync(user.Email, user.FullName, token);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to send verification email");
-            }
-
-            //trả về userID
             return Result<string>.Success(userId);
-        });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error registering user {Email}", request.RegisterDto.Email);
+            throw;
+        }
     }
 }

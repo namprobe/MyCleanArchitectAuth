@@ -1,5 +1,6 @@
 using Auth.Application.Common.Interfaces;
 using Auth.Domain.Entities;
+using Auth.Domain.Constants;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,6 +41,26 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Role, str
         builder.Entity<Role>(entity =>
         {
             entity.ToTable("Roles");
+
+            // Seed default roles
+            entity.HasData(
+                new Role 
+                { 
+                    Id = Guid.NewGuid().ToString(), 
+                    Name = Auth.Domain.Constants.Roles.Admin, 
+                    NormalizedName = Auth.Domain.Constants.Roles.Admin.ToUpper(),
+                    ConcurrencyStamp = Guid.NewGuid().ToString(),
+                    Description = "Administrator role with full access"
+                },
+                new Role 
+                { 
+                    Id = Guid.NewGuid().ToString(), 
+                    Name = Auth.Domain.Constants.Roles.User, 
+                    NormalizedName = Auth.Domain.Constants.Roles.User.ToUpper(),
+                    ConcurrencyStamp = Guid.NewGuid().ToString(),
+                    Description = "Standard user role"
+                }
+            );
         });
 
         builder.Entity<UserRole>(entity =>

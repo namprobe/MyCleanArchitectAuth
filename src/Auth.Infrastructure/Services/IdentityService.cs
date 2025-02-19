@@ -2,29 +2,47 @@
 using Auth.Application.Common.Interfaces;
 using Auth.Application.Common.Models;
 using Auth.Domain.Entities;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Identity.Client;
 
 namespace Auth.Infrastructure.Services;
 
 public class IdentityService : IIdentityService
 {
-    public Task<Result> AddToRoleAsync(string userId, string role)
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly RoleManager<Role> _roleManager;
+
+    public IdentityService(UserManager<ApplicationUser> userManager, RoleManager<Role> roleManager)
     {
-        throw new NotImplementedException();
+        _userManager = userManager;
+        _roleManager = roleManager;
     }
 
-    public Task<bool> CheckPasswordAsync(ApplicationUser user, string password)
+    public async Task<Result> AddToRoleAsync(string userId, string role)
     {
-        throw new NotImplementedException();
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return Result.Failure(new[] { "User not found" });
+
+        var result = await _userManager.AddToRoleAsync(user, role);
+        return result.ToApplicationResult();
     }
 
-    public Task<Result> ConfirmEmailAsync(ApplicationUser user, string token)
+    public async Task<bool> CheckPasswordAsync(ApplicationUser user, string password)
     {
-        throw new NotImplementedException();
+        return await _userManager.CheckPasswordAsync(user, password);
     }
 
-    public Task<(Result Result, string UserId)> CreateUserAsync(ApplicationUser user, string password)
+    public async Task<Result> ConfirmEmailAsync(ApplicationUser user, string token)
     {
-        throw new NotImplementedException();
+        var result = await _userManager.ConfirmEmailAsync(user, token);
+        return result.ToApplicationResult();
+    }
+
+    public async Task<(Result Result, string UserId)> CreateUserAsync(ApplicationUser user, string password)
+    {
+        var result = await _userManager.CreateAsync(user, password);
+        return (result.ToApplicationResult(), user.Id);
     }
 
     public Task<Result> DeleteUserAsync(string userId)
@@ -32,9 +50,9 @@ public class IdentityService : IIdentityService
         throw new NotImplementedException();
     }
 
-    public Task<string> GenerateEmailConfirmationTokenAsync(ApplicationUser user)
+    public async Task<string> GenerateEmailConfirmationTokenAsync(ApplicationUser user)
     {
-        throw new NotImplementedException();
+        return await _userManager.GenerateEmailConfirmationTokenAsync(user);
     }
 
     public Task<string> GeneratePasswordResetTokenAsync(ApplicationUser user)
@@ -60,6 +78,16 @@ public class IdentityService : IIdentityService
     public Task<Result> UpdatePasswordAsync(ApplicationUser user, string currentPassword, string newPassword)
     {
         throw new NotImplementedException();
+    }
+}
+
+public static class IdentityResultExtensions
+{
+    public static Result ToApplicationResult(this IdentityResult result)
+    {
+        return result.Succeeded
+            ? Result.Success()
+            : Result.Failure(result.Errors.Select(e => e.Description));
     }
 }
 

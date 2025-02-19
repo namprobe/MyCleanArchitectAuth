@@ -4,6 +4,7 @@ namespace Auth.Application.Common.Interfaces
     {
         void LogError(Exception ex, string message, params object[] args);
         void LogWarning(string message, params object[] args);
+        void LogInformation(string message, params object[] args);
     }
 }
 // Implement ở Infrastructure layer với Serilog/NLog

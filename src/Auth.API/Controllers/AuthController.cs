@@ -1,0 +1,202 @@
+using Auth.Application.Common.DTOs.Auth;
+using Auth.Application.Common.Interfaces;
+using Auth.Application.Features.Auth.Commands.Login;
+using Auth.Application.Features.Auth.Commands.RefreshToken;
+using Auth.Application.Features.Auth.Commands.Register;
+using Auth.Application.Features.Auth.Commands.RevokeToken;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+
+namespace Auth.API.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class AuthController : ControllerBase
+    {
+        private readonly IMediator _mediator;
+        private readonly ILoggerService _logger;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IEmailService _emailService;
+
+
+        public AuthController(IMediator mediator, ILoggerService logger, IUnitOfWork unitOfWork, IEmailService emailService)
+        {
+            _mediator = mediator;
+            _logger = logger;
+            _unitOfWork = unitOfWork;
+            _emailService = emailService;
+        }
+
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
+        {
+            try
+            {
+                //Gọi RegisterCommand để tạo user
+                var command = new RegisterCommand(registerDto);
+                var result = await _mediator.Send(command);
+
+                if (!result.IsSuccess)
+                {
+                    return BadRequest(new { Errors = result.Errors });
+                }
+
+                //Lấy thông tin user để gửi email
+                var user = await _unitOfWork.Users.GetUserByIdAsync(result.Data);
+
+                //Gửi email xác thực
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _emailService.SendVerificationEmailAsync(
+                            user?.Email, $"{user?.FirstName} {user?.LastName}", user?.VerificationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to send verification email to {Email}", user?.Email);
+                    }
+                });
+
+                return Ok(new
+                {
+                    Message = "Registration successful. Please check your email to verify your account.",
+                    UserId = result.Data
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during registration");
+                return StatusCode(500, new{Errors = "An error occurred while registration."});
+            }
+        }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
+        {
+            try
+            {
+                var command = new LoginCommand(loginDto);
+                var result = await _mediator.Send(command);
+
+                if (!result.IsSuccess)
+                {
+                    return BadRequest(result);
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during login");
+                return StatusCode(500, new {Errors = "An error occurred while login."});
+            }
+        }
+
+        [HttpPost("verify-email")]
+        public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailDto verifyEmailDto)
+        {
+            try
+            {
+                _logger.LogInformation("Received verification token: {Token}", verifyEmailDto.Token); // Debug log
+
+                var user = await _unitOfWork.Users.GetByVerificationTokenAsync(verifyEmailDto.Token);
+
+                if (user == null)
+                {
+                    _logger.LogWarning("Invalid verification token: {Token}", verifyEmailDto.Token);
+                    return BadRequest(new { Errors = "Invalid verification token." });
+                }
+                
+                // Kiểm tra xem email đã được xác thực chưa
+                if (user.EmailConfirmed)
+                {
+                    return BadRequest(new { Errors = "Email already verified." });
+                }
+
+                user.EmailConfirmed = true;
+                user.VerificationToken = null;
+                await _unitOfWork.SaveChangesAsync();
+
+                //Gửi email chào mừng
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _emailService.SendWelcomeEmailAsync(user.Email, $"{user.FirstName} {user.LastName}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to send welcome email to {Email}", user.Email);
+                    }
+                });
+                
+                return Ok(new { Message = "Email verified successfully." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during email verification");
+                return StatusCode(500, new { Errors = "An error occurred while verifying email." });
+            }
+        }
+
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenDto refreshTokenDto)
+        {
+            try
+            {
+                var command = new RefreshTokenCommand(refreshTokenDto.RefreshToken, refreshTokenDto.DeviceId);
+                var result = await _mediator.Send(command);
+
+                if (!result.IsSuccess)
+                {
+                    return BadRequest(new { Errors = result.Errors });
+                }
+
+                return Ok(result.Data);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during token refresh");
+                return StatusCode(500, new { Errors = "An error occurred while refreshing token." });
+            }
+        }
+
+        [Authorize]
+        [HttpPost("revoke-token")]
+        public async Task<IActionResult> RevokeToken([FromBody] RevokeTokenDto revokeTokenDto)
+        {
+            try
+            {
+                // Lấy userId từ token hiện tại
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(new { Errors = "Invalid token" });
+                }
+
+                var command = new RevokeTokenCommand(
+                    revokeTokenDto.RefreshToken, 
+                    revokeTokenDto.DeviceId,
+                    userId  // Truyền userId vào command
+                );
+                
+                var result = await _mediator.Send(command);
+
+                if (!result.IsSuccess)
+                {
+                    return BadRequest(new { Errors = result.Errors });
+                }
+
+                return Ok(new { Message = "Token revoked successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during token revocation");
+                return StatusCode(500, new { Errors = "An error occurred while revoking token." });
+            }
+        }
+    }
+}

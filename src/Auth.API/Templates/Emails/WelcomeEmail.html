@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Chào mừng bạn đến với MyCleanArchitectAuth</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .success-message {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h2>Chào mừng {{UserName}}!</h2>
+    <p class="success-message">Cảm ơn bạn đã xác nhận email và tham gia cùng chúng tôi.</p>
+    <p>Tài khoản của bạn đã được kích hoạt thành công. Bạn có thể đăng nhập và bắt đầu sử dụng dịch vụ của chúng tôi.</p>
+    <div class="info-box">
+        <p>Thông tin tài khoản:</p>
+        <ul>
+            <li>Email: {{Email}}</li>
+            <li>Tên người dùng: {{UserName}}</li>
+        </ul>
+    </div>
+    <p>Nếu bạn cần hỗ trợ, đừng ngần ngại liên hệ với chúng tôi.</p>
+    <div class="footer">
+        <p>Trân trọng,<br />MyCleanArchitectAuth Team</p>
+    </div>
+</body>
+</html> 

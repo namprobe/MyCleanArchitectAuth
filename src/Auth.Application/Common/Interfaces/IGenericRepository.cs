@@ -5,7 +5,7 @@ namespace Auth.Application.Common.Interfaces
     public interface IGenericRepository<TEntity> where TEntity : class
     {
         Task<IEnumerable<TEntity>> GetAllAsync();
-        Task<TEntity?> GetByIdAsync(Guid id, params Expression<Func<TEntity, object>>[] includes);
+        Task<TEntity?> GetByIdAsync(string id, params Expression<Func<TEntity, object>>[] includes);
         Task<TEntity?> GetFirstOrDefaultAsync(
             Expression<Func<TEntity, bool>> predicate,
             params Expression<Func<TEntity, object>>[] includes);

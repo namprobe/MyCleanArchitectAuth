@@ -3,6 +3,9 @@ using MediatR;
 using Auth.Application.Common.Models;
 using Auth.Application.Common.Interfaces;
 using Auth.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Auth.Domain.Common;
 namespace Auth.Application.Features.Auth.Commands.Login
 {
     public record LoginCommand(LoginDto LoginDto) : IRequest<Result<TokenResponseDto>>;
@@ -12,55 +15,41 @@ namespace Auth.Application.Features.Auth.Commands.Login
         private readonly IUnitOfWork _unitOfWork;
         private readonly ITokenService _tokenService;
         private readonly IIdentityService _identityService;
+        private readonly ILogger<LoginCommandHandler> _logger;
 
-        // Constructor để inject các dependencies cần thiết
         public LoginCommandHandler(
             IUnitOfWork unitOfWork,
             ITokenService tokenService,
-            IIdentityService identityService)
+            IIdentityService identityService,
+            ILogger<LoginCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _tokenService = tokenService;
             _identityService = identityService;
+            _logger = logger;
         }
 
         public async Task<Result<TokenResponseDto>> Handle(LoginCommand request, CancellationToken cancellationToken)
         {
             return await _unitOfWork.ExecuteTransactionAsync(async () =>
             {
-                // Bước 1: Kiểm tra user tồn tại và có thể đăng nhập
+                // Bước 1: Kiểm tra user và password (read-only)
                 var user = await _unitOfWork.Users.GetUserByEmailAsync(request.LoginDto.Email);
-                if (user == null || !user.CanLogin) // CanLogin kiểm tra user active, không bị khóa, không bị xóa
-                {
+                if (user == null || !user.CanLogin) 
                     return Result<TokenResponseDto>.Failure(new[] { "Invalid credentials" });
+
+                // Kiểm tra xem user có role chưa
+                if (user.UserRoles == null || !user.UserRoles.Any())
+                {
+                    _logger.LogWarning("User {Email} has no roles assigned", user.Email);
+                    // Có thể thêm default role ở đây nếu cần
                 }
 
-                // Bước 2: Xác thực mật khẩu
                 var isPasswordValid = await _identityService.CheckPasswordAsync(user, request.LoginDto.Password);
                 if (!isPasswordValid)
-                {
                     return Result<TokenResponseDto>.Failure(new[] { "Invalid credentials" });
-                }
 
-                // Bước 3: Kiểm tra số lượng phiên đăng nhập
-                if (user.HasReachedMaxSessions()) // Kiểm tra xem đã đạt giới hạn số phiên chưa
-                {
-                    return Result<TokenResponseDto>.Failure(new[] { "Maximum number of active sessions reached" });
-                }
-
-                // Tạo tokens riêng biệt
-                var (accessToken, accessTokenExpiresAt) = await _tokenService.GenerateAccessTokenAsync(user);
-                var (refreshToken, refreshTokenExpiresAt) = await _tokenService.GenerateRefreshTokenAsync();
-
-                var tokenResponse = new TokenResponseDto
-                {
-                    AccessToken = accessToken,
-                    RefreshToken = refreshToken,
-                    AccessTokenExpiresAt = accessTokenExpiresAt,
-                    RefreshTokenExpiresAt = refreshTokenExpiresAt
-                };
-
-                // Bước 5: Vô hiệu hóa session cũ trên cùng thiết bị (nếu có)
+                // Bước 2: Xử lý session và update user
                 var existingSession = await _unitOfWork.UserSessions.GetByDeviceIdAsync(user.Id, request.LoginDto.DeviceId);
                 if (existingSession != null)
                 {
@@ -69,7 +58,20 @@ namespace Auth.Application.Features.Auth.Commands.Login
                     await _unitOfWork.UserSessions.UpdateAsync(existingSession);
                 }
 
-                // Bước 6: Tạo session mới
+                // Tạo tokens
+                var (accessToken, accessTokenExpiresAt) = await _tokenService.GenerateAccessTokenAsync(user);
+                var (refreshToken, refreshTokenExpiresAt) = await _tokenService.GenerateRefreshTokenAsync();
+
+                var tokenResponse = new TokenResponseDto
+                {
+                    AccessToken = accessToken,
+                    RefreshToken = refreshToken,
+                    AccessTokenExpiresAt = accessTokenExpiresAt,
+                    RefreshTokenExpiresAt = refreshTokenExpiresAt,
+                    IsEmailVerified = user.EmailConfirmed
+                };
+
+                // Tạo session mới
                 var session = new UserSession
                 {
                     UserId = user.Id,
@@ -83,15 +85,13 @@ namespace Auth.Application.Features.Auth.Commands.Login
                     IsRevoked = false
                 };
 
-                // Bước 7: Lưu session mới vào database
+                session.InitializeBaseEntity(user.Id); // Initialize base entity fields
                 await _unitOfWork.UserSessions.AddAsync(session);
 
-                // Bước 8: Cập nhật thông tin đăng nhập của user
+                // Cập nhật user
                 user.LastLoginAt = DateTime.UtcNow;
                 user.LastLoginIp = session.IpAddress;
                 await _unitOfWork.Users.UpdateAsync(user);
-
-                // Bước 9: Lưu tất cả thay đổi vào database
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 return Result<TokenResponseDto>.Success(tokenResponse);

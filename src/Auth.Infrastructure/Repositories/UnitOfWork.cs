@@ -1,7 +1,7 @@
-
 using System.Security;
 using Auth.Application.Common.Interfaces;
 using Auth.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace Auth.Infrastructure.Repositories;
 
@@ -51,18 +51,23 @@ public class UnitOfWork : IUnitOfWork
 
     public async Task<TResult> ExecuteTransactionAsync<TResult>(Func<Task<TResult>> action)
     {
-        await BeginTransactionAsync();
-        try
+        var strategy = _context.Database.CreateExecutionStrategy();
+        
+        return await strategy.ExecuteAsync(async () =>
         {
-            var result = await action();
-            await CommitAsync();
-            return result;
-        }
-        catch 
-        {
-            await RollbackAsync();
-            throw;
-        }
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var result = await action();
+                await transaction.CommitAsync();
+                return result;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        });
     }
 
     public async Task ExecuteTransactionAsync(Func<Task> action)

@@ -9,5 +9,6 @@ namespace Auth.Application.Common.Interfaces
         Task<ApplicationUser?> GetUserByEmailAsync(string email);
         Task<bool> IsEmailUniqueAsync(string email);
         Task<IEnumerable<UserSession>> GetUserSessionsAsync(string userId);
+        Task<ApplicationUser?> GetByVerificationTokenAsync(string token);
     }
 }
