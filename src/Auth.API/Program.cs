@@ -1,6 +1,7 @@
 using Auth.Application;
 using Auth.Infrastructure;
 using Auth.API.Configurations;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Auth.API;
 
@@ -20,6 +21,15 @@ public class Program
         builder.Services.AddCorsConfiguration(builder.Configuration);
         builder.Services.AddJwtConfiguration(builder.Configuration);
         builder.Services.AddSwaggerConfiguration();
+        builder.Services.AddRateLimiter(options =>
+        {
+            options.AddFixedWindowLimiter("refresh-token", opt =>
+            {
+                opt.Window = TimeSpan.FromMinutes(1);
+                opt.PermitLimit = 5; // 5 requests per minute
+                opt.QueueLimit = 0;
+            });
+        });
 
         var app = builder.Build();
 
@@ -35,6 +45,7 @@ public class Program
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
+        app.UseRateLimiter();
 
         app.Run();
     }

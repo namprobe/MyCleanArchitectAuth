@@ -10,6 +10,5 @@ namespace Auth.Application.Common.Interfaces
         Task RollbackAsync();
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
         Task<TResult> ExecuteTransactionAsync<TResult>(Func<Task<TResult>> action);
-        Task ExecuteTransactionAsync(Func<Task> action);
     }
 }

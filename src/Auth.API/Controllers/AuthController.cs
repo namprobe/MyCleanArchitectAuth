@@ -8,6 +8,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Microsoft.AspNetCore.RateLimiting;
+using MyCleanArchitectAuth.Application.Features.Auth.Queries.CheckSession;
 
 namespace Auth.API.Controllers
 {
@@ -143,23 +145,35 @@ namespace Auth.API.Controllers
         }
 
         [HttpPost("refresh-token")]
+        [EnableRateLimiting("refresh-token")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenDto refreshTokenDto)
         {
             try
             {
+                _logger.LogInformation("Refreshing token for device: {DeviceId}", refreshTokenDto.DeviceId);
+                
+                // Validate request
+                if (string.IsNullOrEmpty(refreshTokenDto.RefreshToken) || 
+                    string.IsNullOrEmpty(refreshTokenDto.DeviceId))
+                {
+                    return BadRequest(new { Errors = "Invalid refresh token request" });
+                }
+
                 var command = new RefreshTokenCommand(refreshTokenDto.RefreshToken, refreshTokenDto.DeviceId);
                 var result = await _mediator.Send(command);
 
                 if (!result.IsSuccess)
                 {
+                    _logger.LogWarning("Token refresh failed: {Errors}", string.Join(", ", result.Errors));
                     return BadRequest(new { Errors = result.Errors });
                 }
 
-                return Ok(result.Data);
+                _logger.LogInformation("Token refreshed successfully for device: {DeviceId}", refreshTokenDto.DeviceId);
+                return Ok(new { data = result.Data });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during token refresh");
+                _logger.LogError(ex, "Error during token refresh for device: {DeviceId}", refreshTokenDto.DeviceId);
                 return StatusCode(500, new { Errors = "An error occurred while refreshing token." });
             }
         }
@@ -223,6 +237,35 @@ namespace Auth.API.Controllers
             {
                 _logger.LogError(ex, "Error during token revocation");
                 return StatusCode(500, new { Errors = "An error occurred while revoking token." });
+            }
+        }
+
+        [Authorize]
+        [HttpGet("check-session")]
+        public async Task<IActionResult> CheckSession([FromQuery] string deviceId)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(new { Errors = "Invalid token" });
+                }
+
+                var query = new CheckSessionQuery(userId, deviceId);
+                var result = await _mediator.Send(query);
+
+                if (!result.IsSuccess)
+                {
+                    return Unauthorized(new { Errors = result.Errors });
+                }
+
+                return Ok(new { Message = "Session is valid" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking session status");
+                return StatusCode(500, new { Errors = "An error occurred while checking session." });
             }
         }
     }

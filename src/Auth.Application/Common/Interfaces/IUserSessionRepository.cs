@@ -8,5 +8,6 @@ namespace Auth.Application.Common.Interfaces
         Task<UserSession?> GetByDeviceIdAsync(string userId, string deviceId);
         Task<int> GetActiveSessionsCountAsync(string userId);
         Task<IEnumerable<UserSession>> GetActiveSessionsAsync(string userId);
+        Task<UserSession?> GetLatestSessionByDeviceIdAsync(string userId, string deviceId);
     }
 }

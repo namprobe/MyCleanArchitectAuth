@@ -7,4 +7,7 @@ public class TokenResponseDto
     public DateTime AccessTokenExpiresAt { get; set; }  // Thường 15-60 phút
     public DateTime RefreshTokenExpiresAt { get; set; } // Thường 7-30 ngày
     public bool IsEmailVerified { get; set; }  // Thêm trường này
+    public int ActiveSessions { get; set; } // Thêm field này
+    public bool OldestSessionRevoked { get; set; }  // Thêm field này
+    public int MaxAllowedSessions { get; set; }  // Thêm field này
 } 

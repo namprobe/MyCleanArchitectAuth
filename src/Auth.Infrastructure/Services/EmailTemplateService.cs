@@ -5,12 +5,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Auth.Infrastructure.Services;
 
-public interface IEmailTemplateService 
-{
-    Task<string> GetTemplateAsync(EmailTemplateType type);
-    string ReplaceParameters(string template, Dictionary<string, string> parameters);
-}
-
 public class EmailTemplateService : IEmailTemplateService
 {
     private readonly string _templatePath;

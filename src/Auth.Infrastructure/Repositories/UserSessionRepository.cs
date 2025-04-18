@@ -1,4 +1,3 @@
-
 using Auth.Application.Common.Interfaces;
 using Auth.Domain.Entities;
 using Auth.Infrastructure.Data;
@@ -31,6 +30,14 @@ public class UserSessionRepository : GenericRepository<UserSession>, IUserSessio
     public async Task<UserSession?> GetByRefreshTokenAsync(string refreshToken)
     {
         return await GetFirstOrDefaultAsync(x => x.RefreshToken == refreshToken);
+    }
+
+    public async Task<UserSession?> GetLatestSessionByDeviceIdAsync(string userId, string deviceId)
+    {
+        return await _context.Set<UserSession>()
+            .Where(x => x.UserId == userId && x.DeviceId == deviceId)
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync();
     }
 }
 
